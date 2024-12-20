@@ -1,0 +1,69 @@
+```# Initialisation
+data_dir = "./data"  # Chemin vers le dossier contenant les images
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Transformation pour normaliser et redimensionner les images
+transform = transforms.Compose([
+    transforms.Resize((75, 75)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+])
+
+# Charger les images et labels
+images = []
+labels = []
+for i in range(1, 21):
+    img_path = os.path.join(data_dir, f"{i:02d}.jpg")
+    img = Image.open(img_path).convert("RGB")
+    img_tensor = transform(img)
+    images.append(img_tensor)
+    labels.append(0 if i <= 10 else 1)  # Classe 0 pour les 10 premières, Classe 1 pour les suivantes
+
+images = torch.stack(images).to(device)
+labels = torch.tensor(labels).to(device)
+
+# Charger votre modèle (assurez-vous que `net` est défini et entraîné)
+# Exemple : net = torch.load("path/to/your_model.pth")
+# Remplacez par le chemin réel de votre modèle
+net.eval()
+with torch.no_grad():
+    outputs = net(images)
+    predictions = torch.argmax(outputs, dim=1)
+    probabilities = torch.softmax(outputs, dim=1)
+
+# Calcul de l'accuracy
+correct = (predictions == labels).sum().item()
+accuracy = correct / len(labels) * 100
+print(f"Accuracy: {accuracy:.2f}%")
+
+# Préparer les résultats pour l'affichage
+resultats = []
+for i, (label, pred, prob) in enumerate(zip(labels, predictions, probabilities)):
+    resultats.append({
+        "Image": f"{i+1:02d}.jpg",
+        "Label Réel": int(label.item()),
+        "Prédiction": int(pred.item()),
+        "Confiance": float(prob[pred].item())
+    })
+
+# Créer un tableau des résultats
+import pandas as pd
+df_resultats = pd.DataFrame(resultats)
+print(df_resultats)
+
+# Visualisation des résultats
+plt.figure(figsize=(12, 6))
+classes = ["Classe 0 (Jeune)", "Classe 1 (Vieux)"]
+for cls in [0, 1]:
+    cls_indices = [i for i, lbl in enumerate(labels) if lbl == cls]
+    cls_confidences = [resultats[i]["Confiance"] for i in cls_indices]
+    plt.bar([f"{i+1:02d}" for i in cls_indices], cls_confidences, label=classes[cls])
+
+plt.axhline(0.9, color="red", linestyle="--", label="Seuil de confiance (0.9)")
+plt.xlabel("Images")
+plt.ylabel("Confiance de Prédiction")
+plt.title("Confiance des Prédictions par Image")
+plt.legend()
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()```
